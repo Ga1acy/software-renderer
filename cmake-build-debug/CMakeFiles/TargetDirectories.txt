@@ -1,0 +1,3 @@
+/Users/galacy/Desktop/tinyrenderer/cmake-build-debug/CMakeFiles/tinyrenderer.dir
+/Users/galacy/Desktop/tinyrenderer/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/galacy/Desktop/tinyrenderer/cmake-build-debug/CMakeFiles/rebuild_cache.dir
