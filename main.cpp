@@ -19,6 +19,14 @@ inline Vec2i lerp_in_y(int y, Vec2i t0, Vec2i t1) {
     return t;
 }
 
+Vec3f computeBarycentric(const Vec2i* v, float x, float y) {
+    float c1 = (x*(v[1].y - v[2].y) + (v[2].x - v[1].x)*y + v[1].x*v[2].y - v[2].x*v[1].y) / (v[0].x*(v[1].y- v[2].y) + (v[2].x - v[1].x)*v[0].y + v[1].x*v[2].y - v[2].x*v[1].y);
+    float c2 = (x*(v[2].y - v[0].y) + (v[0].x - v[2].x)*y + v[2].x*v[0].y - v[0].x*v[2].y) / (v[1].x*(v[2].y - v[0].y) + (v[0].x - v[2].x)*v[1].y + v[2].x*v[0].y - v[0].x*v[2].y);
+    float c3 = (x*(v[0].y - v[1].y) + (v[1].x - v[0].x)*y + v[0].x*v[1].y - v[1].x*v[0].y) / (v[2].x*(v[0].y - v[1].y) + (v[1].x - v[0].x)*v[2].y + v[0].x*v[1].y - v[1].x*v[0].y);
+
+    return {c1,c2,c3};
+}
+
 
 void line(Vec2i p0, Vec2i p1, TGAImage& image, TGAColor color) {
     bool steep = false;
@@ -46,54 +54,35 @@ void line(Vec2i p0, Vec2i p1, TGAImage& image, TGAColor color) {
     }
 }
 
-void triangle(Vec2i t0, Vec2i t1, Vec2i t2, TGAImage& image, TGAColor color) {
-    if (t0.y > t1.y)
-        std::swap(t0,t1);
-    if (t0.y > t2.y)
-        std::swap(t0,t2);
-    if (t1.y > t2.y)
-        std::swap(t1,t2);
+void triangle(Vec2i* vertices , TGAImage& image, TGAColor color) {
+    Vec2i bounding_box_min(image.get_width() - 1, image.get_height() - 1);
+    Vec2i bouding_box_max(0,0);
+    Vec2i clamp(image.get_width() - 1, image.get_height() - 1);
+    //calculate the bouding box
+    for (int i = 0; i < 3; i++) {
+        bounding_box_min.x = std::max(0,std::min(vertices[i].x, bounding_box_min.x));
+        bounding_box_min.y = std::max(0,std::min(vertices[i].y, bounding_box_min.y));
+        bouding_box_max.x = std::min(clamp.x, std::max(bouding_box_max.x,vertices[i].x));
+        bouding_box_max.y = std::min(clamp.y, std::max(bouding_box_max.y,vertices[i].y));
+    }
 
-    for (int y = t0.y; y <= t2.y; y++) {
-        //phase 1
-        if (y <= t1.y) {
-            float x02 = lerp_in_y(y,t0,t2).x;
-            float x01 = lerp_in_y(y, t0, t1).x;
-
-            if (x02 > x01)
-                std::swap(x02,x01);
-
-            for (int x = x02; x <= x01; ++x) {
-                image.set(x,y,color);
-            }
-        }
-        //phase 2
-        else if (y > t1.y){
-            float x02 = lerp_in_y(y,t0,t2).x;
-            float x12 = lerp_in_y(y, t1, t2).x;
-
-            if (x02 > x12)
-                std::swap(x02,x12);
-
-            for (int x = x02; x <= x12; ++x) {
-                image.set(x,y,color);
-            }
+    for (int i = bounding_box_min.x; i <= bouding_box_max.x; i ++) {
+        for (int j = bounding_box_min.y; j <= bouding_box_max.y; j++) {
+            //compute barycentric coordinates to confirm if (i,j) inside triangle
+            Vec3f P = computeBarycentric(vertices,i,j);
+            if (P.x <0 || P.y < 0 || P.z < 0)
+                continue;
+            image.set(i,j,color);
         }
     }
 }
 
 int main(int argc, char** argv) {
-    TGAImage image(width,height,TGAImage::RGB);
-    Vec2i t0[3] = {Vec2i(10, 70),   Vec2i(50, 160),  Vec2i(70, 80)};
-    Vec2i t1[3] = {Vec2i(180, 50),  Vec2i(150, 1),   Vec2i(70, 180)};
-    Vec2i t2[3] = {Vec2i(180, 150), Vec2i(120, 160), Vec2i(130, 180)};
-    triangle(t0[0], t0[1], t0[2], image, red);
-    triangle(t1[0], t1[1], t1[2], image, white);
-    triangle(t2[0], t2[1], t2[2], image, green);
-
-    image.flip_vertically();
-    image.write_tga_file("output.tga");
-    delete model;
+    TGAImage frame(200, 200, TGAImage::RGB);
+    Vec2i pts[3] = {Vec2i(10,10), Vec2i(100, 30), Vec2i(190, 160)};
+    triangle(pts, frame, red);
+    frame.flip_vertically(); // to place the origin in the bottom left corner of the image
+    frame.write_tga_file("framebuffer.tga");
     return 0;
 }
 
