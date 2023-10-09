@@ -12,17 +12,25 @@
 #include <vector>
 #include "geometry.h"
 
+struct Face {
+    std::vector<int> vertexIndices;
+    std::vector<int> texcoordsIndices;
+};
+
 class Model {
 private:
     std::vector<Vec3f> verts_;
-    std::vector<std::vector<int> > faces_;
+    std::vector<Face> faces_;
+    std::vector<Vec2f> texcoords_;
+
 public:
     Model(const char *filename);
     ~Model();
     int nverts();
     int nfaces();
     Vec3f vert(int i);
-    std::vector<int> face(int idx);
+    Face face(int idx);
+    Vec2f& getTexCoord(int index);
 };
 
 #endif //__MODEL_H__
