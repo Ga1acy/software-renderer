@@ -1,7 +1,3 @@
-//
-// Created by galacy on 2023/10/5.
-//
-
 #include <iostream>
 #include <fstream>
 #include <string.h>
@@ -353,4 +349,3 @@ bool TGAImage::scale(int w, int h) {
     height = h;
     return true;
 }
-

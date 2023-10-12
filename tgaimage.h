@@ -1,12 +1,3 @@
-//
-// Created by galacy on 2023/10/5.
-//
-
-#ifndef TINYRENDERER_TGAIMAGE_H
-#define TINYRENDERER_TGAIMAGE_H
-
-#endif //TINYRENDERER_TGAIMAGE_H
-
 #ifndef __IMAGE_H__
 #define __IMAGE_H__
 
@@ -44,7 +35,7 @@ struct TGAColor {
     TGAColor() : val(0), bytespp(1) {
     }
 
-    TGAColor(unsigned char R, unsigned char G, unsigned char B, unsigned char A) : b(B), g(G), r(R), a(A), bytespp(4) {
+    TGAColor(unsigned char R, unsigned char G, unsigned char B, unsigned char A=255) : b(B), g(G), r(R), a(A), bytespp(4) {
     }
 
     TGAColor(int v, int bpp) : val(v), bytespp(bpp) {
