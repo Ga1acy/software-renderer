@@ -1,126 +1,148 @@
+#include <vector>
+#include <cmath>
+#include <limits>
 #include "tgaimage.h"
 #include "model.h"
 #include "geometry.h"
-#include <vector>
-#include <cmath>
 
-
-const TGAColor white = TGAColor(255,255,255,255);
-const TGAColor red = TGAColor(255,0,0,255);
-const TGAColor blue = TGAColor(0,0,255,255);
-const TGAColor green = TGAColor(0,255,0,255);
 const int width = 800;
 const int height = 800;
+const int depth = 255;
+
 Model* model = nullptr;
+int *zBuffer = nullptr;
+Vec3f light_dir(0,0,-1);
+Vec3f camera(0,0,3);
 
-inline Vec2i lerp_in_y(int y, Vec2i t0, Vec2i t1) {
-    float alpha = (float)(y - t0.y) / (t1.y - t0.y);
-    Vec2i t = t0 + (t1 - t0)*alpha;
-    return t;
+//Matrix to vector
+Vec3f m2v(Matrix m) {
+    return Vec3f(m[0][0] / m[3][0], m[1][0] / m[3][0], m[2][0] / m[3][0]);
 }
 
-Vec3f computeBarycentric(const Vec3f* v, float x, float y) {
-    float alpha = (x*(v[1].y - v[2].y) + (v[2].x - v[1].x)*y + v[1].x*v[2].y - v[2].x*v[1].y) / (v[0].x*(v[1].y- v[2].y) + (v[2].x - v[1].x)*v[0].y + v[1].x*v[2].y - v[2].x*v[1].y);
-    float beta = (x*(v[2].y - v[0].y) + (v[0].x - v[2].x)*y + v[2].x*v[0].y - v[0].x*v[2].y) / (v[1].x*(v[2].y - v[0].y) + (v[0].x - v[2].x)*v[1].y + v[2].x*v[0].y - v[0].x*v[2].y);
-    float gamma = (x*(v[0].y - v[1].y) + (v[1].x - v[0].x)*y + v[0].x*v[1].y - v[1].x*v[0].y) / (v[2].x*(v[0].y - v[1].y) + (v[1].x - v[0].x)*v[2].y + v[0].x*v[1].y - v[1].x*v[0].y);
+//Vector to matrix
+Matrix v2m(Vec3f v) {
+    Matrix m(4,1);
 
+    for (int i = 0; i < 3; i++)
+        m[i][0] = v[i];
 
-    return {alpha,beta,gamma};
+    m [3][0] = 1.f;
+    return m;
 }
 
+Matrix viewport(int x, int y, int width, int height) {
+    Matrix m = Matrix::identity(4);
+    m[0][3] = (x + width) / 2.f;
+    m[1][3] = (y + height) / 2.f;
+    m[2][3] = depth / 2.f;
 
-void line(Vec2i p0, Vec2i p1, TGAImage& image, TGAColor color) {
-    bool steep = false;
-    if (std::abs(p0.x - p1.x) < std::abs(p0.y - p1.y)) {
-        std::swap(p0.x,p0.y);
-        std::swap(p1.x,p1.y);
-        steep = true;
-    }
-
-    if (p0.x > p1.x) {
-        std::swap(p0.x,p1.x);
-        std::swap(p0.y,p1.y);
-    }
-
-    for (int x = p0.x; x <= p1.x; x++) {
-//        //liner interpolation
-//        //lerp(t,y0,y1) = t0 + x(t1-t0)
-        float t = (x - p0.x) /(float)(p1.x - p0.x);
-        int y = p0.y * (1.-t) + p1.y * t;
-        if (steep) {
-            image.set(y, x, color);
-        } else {
-            image.set(x, y, color);
-        }
-    }
+    m[0][0] = width / 2.f;
+    m[1][1] = height / 2.f;
+    m[2][2] = depth / 2.f;
+    return m;
 }
 
-void triangle(Vec3f* vertices , float* zBuffer, TGAImage& image, TGAColor color) {
-    Vec2f bounding_box_min(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
-    Vec2f bouding_box_max(-std::numeric_limits<float>::max(),-std::numeric_limits<float>::max());
-    Vec2f clamp(image.get_width() - 1, image.get_height() - 1);
-    //calculate the bouding box
-    for (int i = 0; i < 3; i++) {
-        bounding_box_min.x = std::max(0.f, std::min(vertices[i].x , bounding_box_min.x));
-        bounding_box_min.y = std::max(0.f,std::min(vertices[i].y, bounding_box_min.y));
-        bouding_box_max.x = std::min(clamp.x, std::max(bouding_box_max.x,vertices[i].x));
-        bouding_box_max.y = std::min(clamp.y, std::max(bouding_box_max.y,vertices[i].y));
-    }
+Vec3f computeBarycentric(const Vec3i* pts, Vec3i P) {
+    Vec3f u =
+            Vec3f(pts[2].x-pts[0].x, pts[1].x-pts[0].x, pts[0].x-P.x)^
+            Vec3f(pts[2].y-pts[0].y, pts[1].y-pts[0].y, pts[0].y-P.y)
+    ;
+    if (std::abs(u.z)<1) return Vec3f(-1,1,1);
+    return Vec3f(1.f-(u.x+u.y)/u.z, u.y/u.z, u.x/u.z);
+}
 
-    Vec3f P;
-    for (P.x = bounding_box_min.x; P.x <= bouding_box_max.x; P.x++) {
-        for (P.y = bounding_box_min.y; P.y <= bouding_box_max.y; P.y++) {
-            //compute barycentric coordinates to confirm if (i,j) inside triangle
-            Vec3f P_bc = computeBarycentric(vertices,P.x,P.y);
-            if (P_bc.x <0 || P_bc.y < 0 || P_bc.z < 0)
+void triangle(Vec3i t0, Vec3i t1, Vec3i t2,
+              Vec2i uv0, Vec2i uv1, Vec2i uv2,
+              TGAImage& image, float intensity, int* zBuffer) {
+    //compute bouding box
+    Vec3i bboxmin(image.get_width() - 1, image.get_height() - 1, 0);
+    Vec3i bboxmax(0, 0, 0);
+    Vec3i clamp (image.get_width() - 1, image.get_height() - 1, 0);
+    bboxmin.x = std::max(0, std::min(bboxmin.x, std::min(t0.x, std::min(t1.x, t2.x))));
+    bboxmin.y = std::max(0, std::min(bboxmin.y, std::min(t0.y, std::min(t1.y, t2.y))));
+    bboxmax.x = std::min(clamp.x, std::max(t0.x, std::max(t1.x, t2.x)));
+    bboxmax.y = std::min(clamp.y, std::max(t0.y, std::max(t1.y, t2.y)));
+
+    Vec3i pts[3] = {t0, t1, t2};
+    Vec3i P;
+    for (P.x = bboxmin.x; P.x <= bboxmax.x; P.x++) {
+        for (P.y = bboxmin.y; P.y <= bboxmax.y; P.y++) {
+            Vec3f bc = computeBarycentric(pts, P);
+            //check if P inside triangle
+            if (bc.x < 0 || bc.y < 0 || bc.z < 0)
                 continue;
-            P.z = 0;
-            //if P inside the triangle, we need to interpolate to z value
-            //P_bc.x stands for alpha, .y for beta and .z for gamma
-            //thus the formula is P.z = alpha * A.z + beta * B.z + gamma * C.z
-            P.z = P_bc.x * vertices[0].z + P_bc.y * vertices[1].z + P_bc.z * vertices[2].z;
-            if (zBuffer[int(P.x + P.y * width)] < P.z) {
-                zBuffer[int(P.x + P.y * width)]  = P.z;
-                image.set(P.x, P.y, color);
+            P.z = bc.x * t0.z + bc.y * t1.z + bc.z * t2.z;
+            Vec2i uvP;
+            uvP.x = bc.x * uv0.x + bc.y * uv1.x + bc.z * uv2.x;
+            uvP.y = bc.x * uv0.y + bc.y * uv1.y + bc.z * uv2.y;
+            int idx = P.x + P.y * image.get_width();
+            if (zBuffer[idx] < P.z) {
+                zBuffer[idx] = P.z;
+                TGAColor color = model->diffuse(uvP);
+                image.set(P.x, P.y, TGAColor(color.r * intensity, color.g * intensity, color.b * intensity));
             }
         }
     }
 }
 
-Vec3f world2screen(Vec3f v) {
-    return Vec3f(int((v.x + 1.) * width / 2. + .5), int((v.y + 1.) * height / 2. + .5), v.z);
-}
+
 
 int main(int argc, char** argv) {
 
-    TGAImage image(width, height, TGAImage::RGB);
     model = new Model("../obj/african_head.obj");
 
-    float* zBuffer = new float[width * height];
-    //initialize zBuffer, when i < 0, automatically jump out for loop
-    for (int i = width * height; i--; zBuffer[i] = - std::numeric_limits<float>::max());
-    Vec3f light_dir(0,0,-1);
+    zBuffer = new int[width * height];
 
-    for (int i = 0; i < model->nfaces(); i++) {
-        std::vector<int> face = model->face(i);
-        Vec3f screen_coords[3], world_coords[3];
-        for (int j = 0; j < 3; j++) {
-            //get one of three vertex in a face
-            world_coords[j] = model->vert(face[j]);
-            screen_coords[j] = world2screen(world_coords[j]);
-        }
-        //the normal of a face
-        Vec3f n = cross((world_coords[2] - world_coords[0]),(world_coords[1] - world_coords[0]));
-        n.normalize();
-        float intensity = n * light_dir;
-
-        if (intensity > 0)
-            triangle(screen_coords,zBuffer,image,TGAColor(intensity * 255, intensity * 255, intensity * 255, 255));
-
+    for (int i=0; i<width*height; i++) {
+        zBuffer[i] = std::numeric_limits<int>::min();
     }
-    image.flip_vertically(); // to place the origin in the bottom left corner of the image
-    image.write_tga_file("flat-shading-with-zBuffer.tga");
+
+    {
+        TGAImage image(width, height, TGAImage::RGB);
+        Matrix Projection = Matrix::identity(4);
+        Matrix ViewPort = viewport(width / 8, height / 8, width * 3 / 4, height * 3 / 4);
+        Projection[3][2] = -1.f / camera.z;
+        for (int i = 0; i < model->nfaces(); i++) {
+            std::vector<int> face = model->face(i);
+            Vec3i screen_coords[3];
+            Vec3f world_coords[3];
+            for (int j = 0; j < 3; j++) {
+                //get one of three vertex in a face
+                Vec3f v = model->vert(face[j]);
+                screen_coords[j] = m2v(ViewPort * Projection * v2m(v));
+                world_coords[j] = v;
+            }
+            //the normal of a face
+            Vec3f n = ((world_coords[2] - world_coords[0]) ^ (world_coords[1] - world_coords[0])).normalize();
+            float intensity = n * light_dir;
+
+            if (intensity > 0) {
+                Vec2i uv[3];
+                for (int k = 0; k < 3; k++) {
+                    uv[k] = model->uv(i, k);
+                }
+                triangle(screen_coords[0], screen_coords[1], screen_coords[2],
+                         uv[0], uv[1], uv[2],
+                         image, intensity, zBuffer);
+            }
+        }
+        image.flip_vertically(); // to place the origin in the bottom left corner of the image
+        image.write_tga_file("output.tga");
+    }
+
+
+    {
+        TGAImage zbImage(width,height,TGAImage::GRAYSCALE);
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++){
+                zbImage.set(i, j, TGAColor(zBuffer[i + j * width],1));
+            }
+        }
+        zbImage.flip_vertically();
+        zbImage.write_tga_file("zbuffer.tga");
+    }
     delete model;
+    delete []zBuffer;
     return 0;
 }
 
