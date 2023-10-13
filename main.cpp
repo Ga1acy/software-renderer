@@ -30,6 +30,29 @@ Matrix v2m(Vec3f v) {
     return m;
 }
 
+Matrix lookAt(Vec3f cameraPos, Vec3f lookAt, Vec3f viewUp) {
+    //g, also knows as w axis
+    Vec3f gazeDirection = (cameraPos - lookAt).normalize();
+    //crossProduct(g,t), also knows as u axis
+    Vec3f horizon = (viewUp ^ gazeDirection).normalize();
+    //t, also knows as v axis
+    Vec3f vertical = (gazeDirection ^ horizon).normalize();
+
+    //now we need to rotate g to -Z, t to Y and (g ^ t) to X
+    Matrix rotation = Matrix::identity(4);
+    Matrix translation = Matrix::identity(4);
+    for (int i = 0; i < 3; i++) {
+        rotation[0][i] = horizon[i];
+        rotation[1][i] = vertical[i];
+        rotation[2][i] = gazeDirection[i];
+
+        translation[i][3] = -cameraPos[i];
+    }
+    Matrix res = rotation * translation;
+
+    return res;
+}
+
 Matrix viewport(int x, int y, int width, int height) {
     Matrix m = Matrix::identity(4);
     m[0][3] = (x + width) / 2.f;
@@ -99,6 +122,7 @@ int main(int argc, char** argv) {
 
     {
         TGAImage image(width, height, TGAImage::RGB);
+        Matrix ModelView = lookAt(Vec3f(2,1,3), Vec3f(0,0,1), Vec3f(0,1,0));
         Matrix Projection = Matrix::identity(4);
         Matrix ViewPort = viewport(width / 8, height / 8, width * 3 / 4, height * 3 / 4);
         Projection[3][2] = -1.f / camera.z;
@@ -109,7 +133,7 @@ int main(int argc, char** argv) {
             for (int j = 0; j < 3; j++) {
                 //get one of three vertex in a face
                 Vec3f v = model->vert(face[j]);
-                screen_coords[j] = m2v(ViewPort * Projection * v2m(v));
+                screen_coords[j] = m2v(ViewPort * Projection * ModelView * v2m(v));
                 world_coords[j] = v;
             }
             //the normal of a face
