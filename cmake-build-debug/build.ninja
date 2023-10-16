@@ -70,6 +70,12 @@ build CMakeFiles/tinyrenderer.dir/geometry.cpp.o: CXX_COMPILER__tinyrenderer_Deb
   OBJECT_DIR = CMakeFiles/tinyrenderer.dir
   OBJECT_FILE_DIR = CMakeFiles/tinyrenderer.dir
 
+build CMakeFiles/tinyrenderer.dir/my_gl.cpp.o: CXX_COMPILER__tinyrenderer_Debug /Users/galacy/Desktop/tinyrenderer/my_gl.cpp || cmake_object_order_depends_target_tinyrenderer
+  DEP_FILE = CMakeFiles/tinyrenderer.dir/my_gl.cpp.o.d
+  FLAGS = -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk -fcolor-diagnostics -std=gnu++17
+  OBJECT_DIR = CMakeFiles/tinyrenderer.dir
+  OBJECT_FILE_DIR = CMakeFiles/tinyrenderer.dir
+
 
 # =============================================================================
 # Link build statements for EXECUTABLE target tinyrenderer
@@ -78,7 +84,7 @@ build CMakeFiles/tinyrenderer.dir/geometry.cpp.o: CXX_COMPILER__tinyrenderer_Deb
 #############################################
 # Link the executable tinyrenderer
 
-build tinyrenderer: CXX_EXECUTABLE_LINKER__tinyrenderer_Debug CMakeFiles/tinyrenderer.dir/main.cpp.o CMakeFiles/tinyrenderer.dir/tgaimage.cpp.o CMakeFiles/tinyrenderer.dir/model.cpp.o CMakeFiles/tinyrenderer.dir/geometry.cpp.o
+build tinyrenderer: CXX_EXECUTABLE_LINKER__tinyrenderer_Debug CMakeFiles/tinyrenderer.dir/main.cpp.o CMakeFiles/tinyrenderer.dir/tgaimage.cpp.o CMakeFiles/tinyrenderer.dir/model.cpp.o CMakeFiles/tinyrenderer.dir/geometry.cpp.o CMakeFiles/tinyrenderer.dir/my_gl.cpp.o
   FLAGS = -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.3.sdk
   OBJECT_DIR = CMakeFiles/tinyrenderer.dir
   POST_BUILD = :
