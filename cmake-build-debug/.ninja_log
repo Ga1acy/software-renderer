@@ -70,3 +70,12 @@
 558	591	1697381212529267081	tinyrenderer	a58c8d66231c772f
 2	575	1697381263464978071	CMakeFiles/tinyrenderer.dir/main.cpp.o	562e88ac7cd25e07
 576	611	1697381263501980041	tinyrenderer	a58c8d66231c772f
+9	555	1697430024629796781	CMakeFiles/tinyrenderer.dir/geometry.cpp.o	88de53cdf6a79027
+10	595	1697430024669853403	CMakeFiles/tinyrenderer.dir/my_gl.cpp.o	dc38a61c268db6a0
+7	603	1697430024679199286	CMakeFiles/tinyrenderer.dir/main.cpp.o	562e88ac7cd25e07
+9	703	1697430024778727620	CMakeFiles/tinyrenderer.dir/model.cpp.o	979009f683a6136c
+2	552	1697430285106323772	CMakeFiles/tinyrenderer.dir/my_gl.cpp.o	dc38a61c268db6a0
+2	554	1697430285109673188	CMakeFiles/tinyrenderer.dir/main.cpp.o	562e88ac7cd25e07
+554	589	1697430285146183980	tinyrenderer	a58c8d66231c772f
+2	575	1697430329051903023	CMakeFiles/tinyrenderer.dir/main.cpp.o	562e88ac7cd25e07
+575	608	1697430329086394590	tinyrenderer	a58c8d66231c772f
